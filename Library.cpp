@@ -1,8 +1,8 @@
-#include "Playlist.h"
+#include "Library.h"
 
 void
-Playlist::Add(BEntry file) {
-    PlaylistFile *entry = new PlaylistFile;
+Library::Add(BEntry file) {
+    LibraryFile *entry = new LibraryFile;
 
     entry->file = file;
     entry->next = head;
@@ -13,19 +13,19 @@ Playlist::Add(BEntry file) {
 }
 
 void
-Playlist::Pop() {
+Library::Pop() {
     head = head->next;
     size--;
 }
 
 int
-Playlist::Count() {
+Library::Count() {
     return size;
 }
 
 BEntry
-Playlist::At(int offset) {
-    PlaylistFile cur = *head;
+Library::At(int offset) {
+    LibraryFile cur = *head;
 
     for (int i = 1; i < (Count() - offset); i++)
         cur = *cur.next;

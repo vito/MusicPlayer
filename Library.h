@@ -1,21 +1,21 @@
-#ifndef __PLAYLIST_H
-#define __PLAYLIST_H
+#ifndef __LIBRARY_H
+#define __LIBRARY_H
 
 #include <Entry.h>
 
 
-struct PlaylistFile {
+struct LibraryFile {
     BEntry file;
-    PlaylistFile *next;
+    LibraryFile *next;
 };
 
 
-class Playlist {
-    PlaylistFile *head;
+class Library {
+    LibraryFile *head;
     int size;
 
 public:
-    Playlist() {}
+    Library() {}
 
     BEntry At(int offset);
 
