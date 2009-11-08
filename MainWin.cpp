@@ -16,35 +16,11 @@ BMediaFile *MainWin::mediaFile;
 BSoundPlayer *MainWin::sp;
 media_format MainWin::playFormat;
 
-void
-MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_audio_format &format) {
-    int64 frames = 0;
-
-    playTrack->ReadFrames(buffer, &frames);
-
-    if (frames <= 0) {
-        printf("Finished playing.\n");
-
-        MainWin *window = (MainWin *)cookie;
-
-        printf("Stopping sound buffer.\n");
-        sp->SetHasData(false);
-
-        printf("Sending NEXT to window.\n");
-
-        window->PostMessage(NEXT);
-    }
-}
-
-void
-MainWin::Notifier(void *cookie, BSoundPlayer::sound_player_notification what, ...) {
-    printf("Got sound player notification. %d\n", what == BSoundPlayer::B_SOUND_DONE);
-}
-
 MainWin::MainWin() :
     BWindow(BRect(0, 0, 1, 1), "Music Player", B_TITLED_WINDOW,
             B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE | B_AUTO_UPDATE_SIZE_LIMITS),
-    position(52) {
+    position(52),
+    shuffle(true) {
     node_ref nref;
     status_t err;
 
@@ -123,21 +99,40 @@ MainWin::MessageReceived(BMessage *message) {
 }
 
 void
+MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_audio_format &format) {
+    int64 frames = 0;
+
+    playTrack->ReadFrames(buffer, &frames);
+
+    if (frames <= 0) {
+        sp->SetHasData(false);
+
+        MainWin *window = (MainWin *)cookie;
+        window->PostMessage(NEXT);
+    }
+}
+
+void
+MainWin::Notifier(void *cookie, BSoundPlayer::sound_player_notification what, ...) {
+    printf("Got sound player notification. %d\n", what == BSoundPlayer::B_SOUND_DONE);
+}
+
+void
 MainWin::LoadLibrary(BDirectory *dir) {
     status_t err;
 
     BEntry entry;
-    char name[B_FILE_NAME_LENGTH];
+    entry_ref ref;
 
     while ((err = dir->GetNextEntry(&entry)) == B_OK) {
-        entry.GetName(name);
+        entry.GetRef(&ref);
 
         if (entry.IsDirectory()) {
             BDirectory *entryDir = new BDirectory(&entry);
             LoadLibrary(entryDir);
             delete entryDir;
         } else
-            library->Add(entry);
+            library->Add(ref);
     }
 
     if (err != B_ENTRY_NOT_FOUND)
@@ -199,27 +194,15 @@ void
 MainWin::OnStart() {
     printf("Starting at position %d.\n", position);
 
-    entry_ref file;
     status_t err;
-
-    char name[B_FILE_NAME_LENGTH];
 
     delete mediaFile;
 
-    BEntry entry = library->At(position);
-    printf("Entry received. Ok?: %d\n", entry.InitCheck() == B_OK);
+    LibraryFile *entry = library->At(position);
 
-    entry.GetName(name);
-    printf("Playing track %s.\n", name);
+    printf("Playing track %s.\n", entry->file.name);
 
-    if ((err = entry.GetRef(&file)) != B_OK) {
-        printf("OnStart: Getting reference for entry failed: %s\n", strerror(err));
-        BAlert *alert = new BAlert("notfoundAlert", "File not found.", "OK", NULL, NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
-        alert->Go();
-        return;
-    }
-
-    mediaFile = new BMediaFile(&file);
+    mediaFile = new BMediaFile(&entry->file);
     if ((err = mediaFile->InitCheck()) != B_OK) {
         printf("OnStart: Initiating media file failed: %s\n", strerror(err));
         BAlert *alert = new BAlert("invalidAlert", "File invalid.", "OK", NULL, NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
@@ -239,7 +222,7 @@ MainWin::OnStart() {
             mediaFile->ReleaseTrack(playTrack);
     }
 
-    MainWin::sp = new BSoundPlayer(&playFormat.u.raw_audio, "playfile", PlayBuffer, Notifier);
+    sp = new BSoundPlayer(&playFormat.u.raw_audio, "playfile", PlayBuffer, Notifier);
     sp->SetCookie(this);
     sp->SetVolume(1.0f);
     sp->SetHasData(true);
@@ -253,7 +236,7 @@ void
 MainWin::OnStop() {
     printf("Stopping playback.\n");
 
-    MainWin::sp->Stop();
+    sp->Stop();
 }
 
 
@@ -261,7 +244,10 @@ void
 MainWin::OnNext() {
     printf("Next track.\n");
 
-    position += 1;
+    if (shuffle)
+        position = rand() % library->Count();
+    else
+        position += 1;
 
     if (sp)
         sp->Stop();

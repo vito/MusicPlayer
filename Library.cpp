@@ -1,13 +1,13 @@
 #include "Library.h"
 
 void
-Library::Add(BEntry file) {
-    LibraryFile *entry = new LibraryFile;
+Library::Add(entry_ref file) {
+    LibraryFile *lib = new LibraryFile;
 
-    entry->file = file;
-    entry->next = head;
+    lib->file = file;
+    lib->next = head;
 
-    head = entry;
+    head = lib;
 
     size++;
 }
@@ -23,13 +23,13 @@ Library::Count() {
     return size;
 }
 
-BEntry
+LibraryFile *
 Library::At(int offset) {
-    LibraryFile cur = *head;
+    LibraryFile *cur = head;
 
     for (int i = 1; i < (Count() - offset); i++)
-        cur = *cur.next;
+        cur = cur->next;
 
-    return cur.file;
+    return cur;
 }
 

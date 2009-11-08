@@ -5,7 +5,7 @@
 
 
 struct LibraryFile {
-    BEntry file;
+    entry_ref file;
     LibraryFile *next;
 };
 
@@ -17,9 +17,9 @@ class Library {
 public:
     Library() {}
 
-    BEntry At(int offset);
+    LibraryFile *At(int offset);
 
-    void Add(BEntry file);
+    void Add(entry_ref file);
 
     void Pop();
 

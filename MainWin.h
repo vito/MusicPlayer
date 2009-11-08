@@ -10,6 +10,7 @@
 #include <Window.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "Library.h"
 
@@ -24,13 +25,14 @@ class MainWin : public BWindow {
     BButton *stop;
     BStatusBar *progress;
 
+    Library *library;
+
     // Playback state
     int position;
-    Library *library;
+    bool shuffle;
 
     void MainView();
     void LoadLibrary(BDirectory *dir);
-    BSoundPlayer *Player(media_multi_audio_format*, char*, void (*)(void*, void*, size_t, const media_raw_audio_format&));
 
     void OnStart();
     void OnStop();
