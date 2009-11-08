@@ -10,6 +10,7 @@
 const int32 START = 'STRT';
 const int32 STOP = 'STOP';
 const int32 NEXT = 'NEXT';
+const int32 SHUFFLE = 'SHFL';
 
 BMediaTrack *MainWin::playTrack;
 BMediaFile *MainWin::mediaFile;
@@ -25,6 +26,8 @@ MainWin::MainWin() :
     status_t err;
 
     MainView();
+
+    srand(time(NULL));
 
     BDirectory *dir = new BDirectory("/Book/Music");
     if (dir->InitCheck() == B_OK) {
@@ -55,16 +58,13 @@ void
 MainWin::MessageReceived(BMessage *message) {
     switch(message->what) {
         case UPDATE_PROGRESS: {
-            float percentage;
+            float current;
             const char *now;
-            const char *total;
 
-            message->FindFloat("percentage", &percentage);
-            message->FindString("now", &now);
-            message->FindString("total", &total);
+            message->FindFloat("current", &current);
+            message->FindString("time", &now);
 
-            progress->Reset();
-            progress->Update(percentage, now, total);
+            progress->Update(current - progress->CurrentValue(), now);
             break;
         }
         case B_NODE_MONITOR: {
@@ -93,6 +93,10 @@ MainWin::MessageReceived(BMessage *message) {
         case NEXT:
             OnNext();
             break;
+        case SHUFFLE:
+            shuffle = !shuffle;
+            shuffleTick->SetValue(shuffle);
+            break;
         default:
             BWindow::MessageReceived(message);
     }
@@ -100,14 +104,23 @@ MainWin::MessageReceived(BMessage *message) {
 
 void
 MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_audio_format &format) {
+    MainWin *window = (MainWin *)cookie;
     int64 frames = 0;
 
     playTrack->ReadFrames(buffer, &frames);
 
+    char now[100];
+
+    MainWin::Timestamp(now, sp->CurrentTime());
+
+    BMessage *update = new BMessage(UPDATE_PROGRESS);
+    update->AddFloat("current", (float) sp->CurrentTime());
+    update->AddString("time", now);
+
+    window->PostMessage(update);
+
     if (frames <= 0) {
         sp->SetHasData(false);
-
-        MainWin *window = (MainWin *)cookie;
         window->PostMessage(NEXT);
     }
 }
@@ -140,9 +153,16 @@ MainWin::LoadLibrary(BDirectory *dir) {
 }
 
 void
-MainWin::MainView() {
-    //SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+MainWin::Timestamp(char *target, bigtime_t length) {
+    int seconds = (float) length / 1000000.0;
+    int minutes = (float) seconds / 60.0;
+    seconds -= (60 * minutes);
 
+    sprintf(target, "%d:%02d", minutes, seconds);
+}
+
+void
+MainWin::MainView() {
     start = new BButton(
         BRect(0, 0, 80, 0),
         "startButton",
@@ -164,11 +184,17 @@ MainWin::MainView() {
         new BMessage(STOP)
     );
 
+    shuffleTick = new BCheckBox(
+        BRect(0, 0, 80, 0),
+        "shuffleTick",
+        "Shuffle",
+        new BMessage(SHUFFLE)
+    );
+    shuffleTick->SetValue(shuffle);
+
     progress = new BStatusBar(
         BRect(0, 0, 100, 0),
-        "playStatus",
-        "0:00",
-        "5:00"
+        "playStatus"
     );
 
     SetLayout(new BGroupLayout(B_HORIZONTAL));
@@ -180,7 +206,9 @@ MainWin::MainView() {
              .AddGlue()
              .Add(next)
              .AddGlue()
-             .Add(stop))
+             .Add(stop)
+             .AddGlue()
+             .Add(shuffleTick))
         .AddGlue()
         .Add(progress)
         .SetInsets(10, 10, 10, 10)
@@ -211,6 +239,7 @@ MainWin::OnStart() {
         return;
     }
 
+    playTrack = 0;
     for (int i = 0; i < mediaFile->CountTracks(); i++) {
         playTrack = mediaFile->TrackAt(i);
         playFormat.type = B_MEDIA_RAW_AUDIO;
@@ -222,13 +251,24 @@ MainWin::OnStart() {
             mediaFile->ReleaseTrack(playTrack);
     }
 
-    sp = new BSoundPlayer(&playFormat.u.raw_audio, "playfile", PlayBuffer, Notifier);
-    sp->SetCookie(this);
-    sp->SetVolume(1.0f);
-    sp->SetHasData(true);
-    sp->Start();
+    if (playTrack) {
+        sp = new BSoundPlayer(&playFormat.u.raw_audio, "playfile", PlayBuffer, Notifier);
+        sp->SetCookie(this);
+        sp->SetVolume(1.0f);
+        sp->SetHasData(true);
+        sp->Start();
 
-    printf("Playback started.\n");
+        char length[100];
+        Timestamp(length, playTrack->Duration());
+
+        progress->Reset(NULL, length);
+        progress->SetMaxValue(playTrack->Duration());
+
+        printf("Playback started.\n");
+    } else {
+        printf("ERROR: No valid track found. Skipping.\n");
+        OnNext();
+    }
 }
 
 
