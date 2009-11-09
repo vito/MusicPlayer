@@ -19,6 +19,7 @@ LibraryWin::LibraryWin() :
     status_t err;
 
     LibraryView();
+    Show();
 
     BDirectory *dir = new BDirectory("/Book/Music");
     if (dir->InitCheck() == B_OK) {
@@ -52,6 +53,18 @@ LibraryWin::MessageReceived(BMessage *message) {
 
             list->Select(position);
             list->ScrollToSelection();
+            break;
+        case MSG_LIBRARY_ADD:
+            dev_t device;
+            ino_t dir;
+            const char *name;
+
+            message->FindInt32("device", &device);
+            message->FindInt64("dir", &dir);
+            message->FindString("name", &name);
+
+            list->AddItem(new LibraryItem(entry_ref(device, dir, name)));
+
             break;
         case B_NODE_MONITOR: {
             printf("Main app got node monitor message.\n");
@@ -110,16 +123,17 @@ LibraryWin::LoadLibrary(BDirectory *dir) {
     while ((err = dir->GetNextEntry(&entry)) == B_OK) {
         entry.GetRef(&ref);
 
-        printf("Loading... %s\n", ref.name);
-
         if (entry.IsDirectory()) {
             BDirectory *entryDir = new BDirectory(&entry);
             LoadLibrary(entryDir);
             delete entryDir;
         } else {
-            printf("Adding item.\n");
-            list->AddItem(new LibraryItem(ref));
-            printf("Added.\n");
+            BMessage *add = new BMessage(MSG_LIBRARY_ADD);
+            add->AddInt32("device", ref.device);
+            add->AddInt64("dir", ref.directory);
+            add->AddString("name", ref.name);
+
+            PostMessage(add);
         }
     }
 

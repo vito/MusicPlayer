@@ -12,7 +12,6 @@ MusicPlayer::ReadyToRun() {
     main->Show();
 
     library = new LibraryWin();
-    library->Show();
 }
 
 
