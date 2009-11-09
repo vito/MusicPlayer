@@ -3,7 +3,6 @@
 
 #include <Button.h>
 #include <CheckBox.h>
-#include <Directory.h>
 #include <MediaFile.h>
 #include <MediaTrack.h>
 #include <SoundPlayer.h>
@@ -14,9 +13,11 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "Library.h"
 
-
+const int32 START = 'STRT';
+const int32 STOP = 'STOP';
+const int32 NEXT = 'NEXT';
+const int32 SHUFFLE = 'SHFL';
 const int32 UPDATE_PROGRESS = 'UPPR';
 
 
@@ -28,14 +29,11 @@ class MainWin : public BWindow {
     BCheckBox *shuffleTick;
     BStatusBar *progress;
 
-    Library *library;
-
     // Playback state
     int position;
     bool shuffle;
 
     void MainView();
-    void LoadLibrary(BDirectory *dir);
 
     void OnStart();
     void OnStop();

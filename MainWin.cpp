@@ -1,16 +1,16 @@
-#include <Alert.h>
-#include <Application.h>
+#include "Main.h"
+#include "MainWin.h"
+#include "LibraryItem.h"
+
 #include <Entry.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
-#include <NodeMonitor.h>
 
-#include "MainWin.h"
+#define be_app ((MusicPlayer *)be_app)
 
-const int32 START = 'STRT';
-const int32 STOP = 'STOP';
-const int32 NEXT = 'NEXT';
-const int32 SHUFFLE = 'SHFL';
+
+const uint32 MSG_SELECT = 'SLCT';
+
 
 BMediaTrack *MainWin::playTrack;
 BMediaFile *MainWin::mediaFile;
@@ -20,32 +20,9 @@ media_format MainWin::playFormat;
 MainWin::MainWin() :
     BWindow(BRect(0, 0, 1, 1), "Music Player", B_TITLED_WINDOW,
             B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE | B_AUTO_UPDATE_SIZE_LIMITS),
-    position(52),
+    position(1736),
     shuffle(true) {
-    node_ref nref;
-    status_t err;
-
     MainView();
-
-    srand(time(NULL));
-
-    BDirectory *dir = new BDirectory("/Book/Music");
-    if (dir->InitCheck() == B_OK) {
-        dir->GetNodeRef(&nref);
-        printf("Directory node ref received.\n");
-        err = watch_node(&nref, B_WATCH_DIRECTORY, be_app_messenger);
-
-        if (err != B_OK)
-            printf("Directory node could not be watched.\n");
-        else
-            printf("Watching directory node.\n");
-
-        library = new Library();
-        LoadLibrary(dir);
-
-        printf("Library loaded; entries: %d\n", library->Count());
-    } else
-        printf("Library could not be loaded.");
 }
 
 bool
@@ -65,23 +42,6 @@ MainWin::MessageReceived(BMessage *message) {
             message->FindString("time", &now);
 
             progress->Update(current - progress->CurrentValue(), now);
-            break;
-        }
-        case B_NODE_MONITOR: {
-            printf("Main app got node monitor message.\n");
-
-            int32 opcode;
-            message->FindInt32("opcode", &opcode);
-            switch (opcode) {
-                case B_ENTRY_CREATED:
-                    printf("Entry created.\n");
-                    break;
-                case B_ENTRY_REMOVED:
-                    printf("Entry removed.\n");
-                    break;
-                default:
-                    printf("Opcode: %d\n", (int) opcode);
-            }
             break;
         }
         case START:
@@ -128,28 +88,6 @@ MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_aud
 void
 MainWin::Notifier(void *cookie, BSoundPlayer::sound_player_notification what, ...) {
     printf("Got sound player notification. %d\n", what == BSoundPlayer::B_SOUND_DONE);
-}
-
-void
-MainWin::LoadLibrary(BDirectory *dir) {
-    status_t err;
-
-    BEntry entry;
-    entry_ref ref;
-
-    while ((err = dir->GetNextEntry(&entry)) == B_OK) {
-        entry.GetRef(&ref);
-
-        if (entry.IsDirectory()) {
-            BDirectory *entryDir = new BDirectory(&entry);
-            LoadLibrary(entryDir);
-            delete entryDir;
-        } else
-            library->Add(ref);
-    }
-
-    if (err != B_ENTRY_NOT_FOUND)
-        printf("LoadLibrary: Error encountered at %d added: %s.\n", library->Count(), strerror(err));
 }
 
 void
@@ -224,18 +162,14 @@ MainWin::OnStart() {
 
     status_t err;
 
-    delete mediaFile;
+    LibraryItem *item = dynamic_cast<LibraryItem *>(be_app->library->list->ItemAt(position));
+    printf("Playing track %s.\n", item->entry.name);
 
-    LibraryFile *entry = library->At(position);
-
-    printf("Playing track %s.\n", entry->file.name);
-
-    mediaFile = new BMediaFile(&entry->file);
+    mediaFile = new BMediaFile(&item->entry);
     if ((err = mediaFile->InitCheck()) != B_OK) {
-        printf("OnStart: Initiating media file failed: %s\n", strerror(err));
-        BAlert *alert = new BAlert("invalidAlert", "File invalid.", "OK", NULL, NULL, B_WIDTH_AS_USUAL, B_WARNING_ALERT);
-        alert->Go();
+        printf("OnStart: Initiating media file failed: %s; skipping.\n", strerror(err));
         delete mediaFile;
+        OnNext();
         return;
     }
 
@@ -264,6 +198,11 @@ MainWin::OnStart() {
         progress->Reset(NULL, length);
         progress->SetMaxValue(playTrack->Duration());
 
+        BMessage *select = new BMessage(MSG_SELECT);
+        select->AddUInt32("position", position);
+
+        be_app->library->PostMessage(select);
+
         printf("Playback started.\n");
     } else {
         printf("ERROR: No valid track found. Skipping.\n");
@@ -285,7 +224,7 @@ MainWin::OnNext() {
     printf("Next track.\n");
 
     if (shuffle)
-        position = rand() % library->Count();
+        position = rand() % be_app->library->list->CountItems();
     else
         position += 1;
 

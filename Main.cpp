@@ -1,20 +1,19 @@
-#include <Application.h>
-
-#include "MainWin.h"
+#include "Main.h"
 
 
-class MusicPlayer : public BApplication {
-    MainWin *win;
+MusicPlayer::MusicPlayer() :
+    BApplication("application/music-player") {}
 
-public:
-    MusicPlayer() :
-        BApplication("application/music-player") {}
+void
+MusicPlayer::ReadyToRun() {
+    srand(time(NULL));
 
-    void ReadyToRun() {
-        win = new MainWin();
-        win->Show();
-    }
-};
+    main = new MainWin();
+    main->Show();
+
+    library = new LibraryWin();
+    library->Show();
+}
 
 
 int main(void) {
