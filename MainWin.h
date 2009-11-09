@@ -14,13 +14,6 @@
 #include <time.h>
 
 
-const int32 START = 'STRT';
-const int32 STOP = 'STOP';
-const int32 NEXT = 'NEXT';
-const int32 SHUFFLE = 'SHFL';
-const int32 UPDATE_PROGRESS = 'UPPR';
-
-
 class MainWin : public BWindow {
     // GUI elements
     BButton *start;

@@ -1,5 +1,6 @@
 #include "LibraryWin.h"
 #include "LibraryItem.h"
+#include "Messages.h"
 
 #include <Application.h>
 #include <Entry.h>
@@ -45,7 +46,7 @@ LibraryWin::QuitRequested() {
 void
 LibraryWin::MessageReceived(BMessage *message) {
     switch(message->what) {
-        case MSG_SELECT:
+        case MSG_LIBRARY_SELECT:
             uint32 position;
             message->FindUInt32("position", &position);
 

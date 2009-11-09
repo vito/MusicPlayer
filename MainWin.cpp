@@ -1,5 +1,6 @@
 #include "Main.h"
 #include "MainWin.h"
+#include "Messages.h"
 #include "LibraryItem.h"
 
 #include <Entry.h>
@@ -7,9 +8,6 @@
 #include <GroupLayoutBuilder.h>
 
 #define be_app ((MusicPlayer *)be_app)
-
-
-const uint32 MSG_SELECT = 'SLCT';
 
 
 BMediaTrack *MainWin::playTrack;
@@ -34,7 +32,20 @@ MainWin::QuitRequested() {
 void
 MainWin::MessageReceived(BMessage *message) {
     switch(message->what) {
-        case UPDATE_PROGRESS: {
+        case MSG_START:
+            OnStart();
+            break;
+        case MSG_STOP:
+            OnStop();
+            break;
+        case MSG_NEXT:
+            OnNext();
+            break;
+        case MSG_TOGGLE_SHUFFLE:
+            shuffle = !shuffle;
+            shuffleTick->SetValue(shuffle);
+            break;
+        case MSG_UPDATE_PROGRESS: {
             float current;
             const char *now;
 
@@ -44,19 +55,6 @@ MainWin::MessageReceived(BMessage *message) {
             progress->Update(current - progress->CurrentValue(), now);
             break;
         }
-        case START:
-            OnStart();
-            break;
-        case STOP:
-            OnStop();
-            break;
-        case NEXT:
-            OnNext();
-            break;
-        case SHUFFLE:
-            shuffle = !shuffle;
-            shuffleTick->SetValue(shuffle);
-            break;
         default:
             BWindow::MessageReceived(message);
     }
@@ -73,7 +71,7 @@ MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_aud
 
     MainWin::Timestamp(now, sp->CurrentTime());
 
-    BMessage *update = new BMessage(UPDATE_PROGRESS);
+    BMessage *update = new BMessage(MSG_UPDATE_PROGRESS);
     update->AddFloat("current", (float) sp->CurrentTime());
     update->AddString("time", now);
 
@@ -81,7 +79,7 @@ MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_aud
 
     if (frames <= 0) {
         sp->SetHasData(false);
-        window->PostMessage(NEXT);
+        window->PostMessage(MSG_NEXT);
     }
 }
 
@@ -105,28 +103,28 @@ MainWin::MainView() {
         BRect(0, 0, 80, 0),
         "startButton",
         "Start",
-        new BMessage(START)
+        new BMessage(MSG_START)
     );
 
     next = new BButton(
         BRect(0, 0, 80, 0),
         "nextButton",
         "Next",
-        new BMessage(NEXT)
+        new BMessage(MSG_NEXT)
     );
 
     stop = new BButton(
         BRect(0, 0, 80, 0),
         "stopButton",
         "Stop",
-        new BMessage(STOP)
+        new BMessage(MSG_STOP)
     );
 
     shuffleTick = new BCheckBox(
         BRect(0, 0, 80, 0),
         "shuffleTick",
         "Shuffle",
-        new BMessage(SHUFFLE)
+        new BMessage(MSG_TOGGLE_SHUFFLE)
     );
     shuffleTick->SetValue(shuffle);
 
@@ -198,7 +196,7 @@ MainWin::OnStart() {
         progress->Reset(NULL, length);
         progress->SetMaxValue(playTrack->Duration());
 
-        BMessage *select = new BMessage(MSG_SELECT);
+        BMessage *select = new BMessage(MSG_LIBRARY_SELECT);
         select->AddUInt32("position", position);
 
         be_app->library->PostMessage(select);
