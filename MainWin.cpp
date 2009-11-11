@@ -19,7 +19,7 @@ media_format MainWin::playFormat;
 MainWin::MainWin() :
     BWindow(BRect(0, 0, 1, 1), "Music Player", B_TITLED_WINDOW,
             B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE | B_AUTO_UPDATE_SIZE_LIMITS),
-    position(1736),
+    position(0),
     shuffle(true) {
     MainView();
 }
@@ -91,7 +91,7 @@ MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_aud
     else
         now = time = sp->CurrentTime();
 
-    char timestamp[100];
+    char timestamp[64];
 
     MainWin::Timestamp(timestamp, time);
 
@@ -114,11 +114,8 @@ MainWin::Notifier(void *cookie, BSoundPlayer::sound_player_notification what, ..
 
 void
 MainWin::Timestamp(char *target, bigtime_t length) {
-    int seconds = (float) length / 1000000.0;
-    int minutes = (float) seconds / 60.0;
-    seconds -= (60 * minutes);
-
-    sprintf(target, "%d:%02d", minutes, seconds);
+    length /= 1000000;
+    sprintf(target, "%d:%02d", (int) length / 60, (int) length % 60);
 }
 
 void
@@ -230,10 +227,10 @@ MainWin::Play() {
         sp->SetHasData(true);
         sp->Start();
 
-        char length[100];
-        Timestamp(length, playTrack->Duration());
+        char timestamp[100];
+        Timestamp(timestamp, playTrack->Duration());
 
-        progress->Reset(NULL, length);
+        progress->Reset(NULL, timestamp);
         progress->SetMaxValue(playTrack->Duration());
 
         BMessage *select = new BMessage(MSG_LIBRARY_HIGHLIGHT);
@@ -259,6 +256,8 @@ MainWin::Pause() {
 void
 MainWin::Stop() {
     printf("Stopping playback.\n");
+
+    progress->Reset();
 
     sp->Stop();
     sp = 0;
