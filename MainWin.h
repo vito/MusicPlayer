@@ -35,6 +35,7 @@ class MainWin : public BWindow {
     void Next();
 
 public:
+    static bigtime_t time;
     static BMediaTrack *playTrack;
     static BMediaFile *mediaFile;
     static BSoundPlayer *sp;

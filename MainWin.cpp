@@ -10,6 +10,7 @@
 #define be_app ((MusicPlayer *)be_app)
 
 
+bigtime_t MainWin::time;
 BMediaTrack *MainWin::playTrack;
 BMediaFile *MainWin::mediaFile;
 BSoundPlayer *MainWin::sp;
@@ -69,18 +70,26 @@ MainWin::MessageReceived(BMessage *message) {
 
 void
 MainWin::PlayBuffer(void *cookie, void *buffer, size_t size, const media_raw_audio_format &format) {
-    MainWin *window = (MainWin *)cookie;
     int64 frames = 0;
 
     playTrack->ReadFrames(buffer, &frames);
 
-    char now[100];
+    MainWin *window = (MainWin *)cookie;
 
-    MainWin::Timestamp(now, sp->CurrentTime());
+    bigtime_t now;
+
+    if (sp->CurrentTime() < time)
+        now = time + sp->CurrentTime();
+    else
+        now = time = sp->CurrentTime();
+
+    char timestamp[100];
+
+    MainWin::Timestamp(timestamp, time);
 
     BMessage *update = new BMessage(MSG_UPDATE_PROGRESS);
-    update->AddFloat("current", (float) sp->CurrentTime());
-    update->AddString("time", now);
+    update->AddFloat("current", (float) now);
+    update->AddString("time", timestamp);
 
     window->PostMessage(update);
 
@@ -258,6 +267,7 @@ MainWin::Next() {
     if (sp) {
         sp->Stop();
         sp = 0;
+        time = 0;
     }
 
     Play();
