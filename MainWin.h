@@ -24,7 +24,7 @@ class MainWin : public BWindow {
     BStatusBar *progress;
 
     // Playback state
-    int position;
+    int32 position;
     bool shuffle;
 
     void MainView();

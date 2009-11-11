@@ -1,5 +1,6 @@
 #include "LibraryWin.h"
 #include "LibraryItem.h"
+#include "Main.h"
 #include "Messages.h"
 
 #include <Application.h>
@@ -9,7 +10,7 @@
 #include <NodeMonitor.h>
 #include <String.h> // strerror
 
-const uint32 MSG_SELECT ='SLCT';
+#define be_app ((MusicPlayer *)be_app)
 
 
 LibraryWin::LibraryWin() :
@@ -47,7 +48,7 @@ LibraryWin::QuitRequested() {
 void
 LibraryWin::MessageReceived(BMessage *message) {
     switch(message->what) {
-        case MSG_LIBRARY_SELECT:
+        case MSG_LIBRARY_HIGHLIGHT:
             uint32 position;
             message->FindUInt32("position", &position);
 
@@ -83,7 +84,12 @@ LibraryWin::MessageReceived(BMessage *message) {
             }
             break;
         }
+        case MSG_LIBRARY_SELECT:
+            message->AddInt32("position", list->CurrentSelection());
+            be_app->main->PostMessage(message);
+            break;
         default:
+            printf("Library window got message.\n");
             BWindow::MessageReceived(message);
     }
 }
@@ -94,6 +100,7 @@ LibraryWin::LibraryView() {
         BRect(0, 0, 400, 300),
         "libraryList"
     );
+    list->SetInvocationMessage(new BMessage(MSG_LIBRARY_SELECT));
 
     scroll = new BScrollView(
         "scrollLibrary",

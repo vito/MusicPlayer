@@ -1,7 +1,7 @@
+#include "LibraryItem.h"
 #include "Main.h"
 #include "MainWin.h"
 #include "Messages.h"
-#include "LibraryItem.h"
 
 #include <Entry.h>
 #include <GroupLayout.h>
@@ -63,6 +63,14 @@ MainWin::MessageReceived(BMessage *message) {
             progress->Update(current - progress->CurrentValue(), now);
             break;
         }
+        case MSG_LIBRARY_SELECT:
+            message->FindInt32("position", &position);
+
+            if (sp)
+                Stop();
+
+            Play();
+            break;
         default:
             BWindow::MessageReceived(message);
     }
@@ -181,12 +189,14 @@ MainWin::MainView() {
 
 void
 MainWin::Play() {
+    printf("Playing.\n");
+
     if (sp && sp->HasData()) {
         sp->Start();
         return;
     }
 
-    printf("Starting at position %d.\n", position);
+    printf("Starting at position %d.\n", (int) position);
 
     status_t err;
 
@@ -226,7 +236,7 @@ MainWin::Play() {
         progress->Reset(NULL, length);
         progress->SetMaxValue(playTrack->Duration());
 
-        BMessage *select = new BMessage(MSG_LIBRARY_SELECT);
+        BMessage *select = new BMessage(MSG_LIBRARY_HIGHLIGHT);
         select->AddUInt32("position", position);
 
         be_app->library->PostMessage(select);
@@ -251,7 +261,7 @@ MainWin::Stop() {
     printf("Stopping playback.\n");
 
     sp->Stop();
-    delete sp;
+    sp = 0;
 }
 
 
