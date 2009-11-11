@@ -16,7 +16,8 @@
 
 class MainWin : public BWindow {
     // GUI elements
-    BButton *start;
+    BButton *play;
+    BButton *pause;
     BButton *next;
     BButton *stop;
     BCheckBox *shuffleTick;
@@ -28,9 +29,10 @@ class MainWin : public BWindow {
 
     void MainView();
 
-    void OnStart();
-    void OnStop();
-    void OnNext();
+    void Play();
+    void Pause();
+    void Stop();
+    void Next();
 
 public:
     static BMediaTrack *playTrack;

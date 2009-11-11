@@ -32,14 +32,21 @@ MainWin::QuitRequested() {
 void
 MainWin::MessageReceived(BMessage *message) {
     switch(message->what) {
-        case MSG_START:
-            OnStart();
+        case MSG_PLAY:
+            play->Hide();
+            pause->Show();
+            Play();
+            break;
+        case MSG_PAUSE:
+            pause->Hide();
+            play->Show();
+            Pause();
             break;
         case MSG_STOP:
-            OnStop();
+            Stop();
             break;
         case MSG_NEXT:
-            OnNext();
+            Next();
             break;
         case MSG_TOGGLE_SHUFFLE:
             shuffle = !shuffle;
@@ -99,22 +106,30 @@ MainWin::Timestamp(char *target, bigtime_t length) {
 
 void
 MainWin::MainView() {
-    start = new BButton(
-        BRect(0, 0, 80, 0),
-        "startButton",
-        "Start",
-        new BMessage(MSG_START)
+    play = new BButton(
+        BRect(0, 0, 70, 0),
+        "playButton",
+        "Play",
+        new BMessage(MSG_PLAY)
     );
 
+    pause = new BButton(
+        BRect(0, 0, 70, 0),
+        "pauseButton",
+        "Pause",
+        new BMessage(MSG_PAUSE)
+    );
+    pause->Hide();
+
     next = new BButton(
-        BRect(0, 0, 80, 0),
+        BRect(0, 0, 70, 0),
         "nextButton",
         "Next",
         new BMessage(MSG_NEXT)
     );
 
     stop = new BButton(
-        BRect(0, 0, 80, 0),
+        BRect(0, 0, 70, 0),
         "stopButton",
         "Stop",
         new BMessage(MSG_STOP)
@@ -137,8 +152,9 @@ MainWin::MainView() {
 
     AddChild(
         BGroupLayoutBuilder(B_VERTICAL, 5)
-        .Add(BGroupLayoutBuilder(B_HORIZONTAL, 10)
-             .Add(start)
+        .Add(BGroupLayoutBuilder(B_HORIZONTAL, 5)
+             .Add(play)
+             .Add(pause)
              .AddGlue()
              .Add(next)
              .AddGlue()
@@ -155,7 +171,12 @@ MainWin::MainView() {
 
 
 void
-MainWin::OnStart() {
+MainWin::Play() {
+    if (sp && sp->HasData()) {
+        sp->Start();
+        return;
+    }
+
     printf("Starting at position %d.\n", position);
 
     status_t err;
@@ -165,9 +186,9 @@ MainWin::OnStart() {
 
     mediaFile = new BMediaFile(&item->entry);
     if ((err = mediaFile->InitCheck()) != B_OK) {
-        printf("OnStart: Initiating media file failed: %s; skipping.\n", strerror(err));
+        printf("Play: Initiating media file failed: %s; skipping.\n", strerror(err));
         delete mediaFile;
-        OnNext();
+        Next();
         return;
     }
 
@@ -204,21 +225,29 @@ MainWin::OnStart() {
         printf("Playback started.\n");
     } else {
         printf("ERROR: No valid track found. Skipping.\n");
-        OnNext();
+        Next();
     }
 }
 
 
 void
-MainWin::OnStop() {
-    printf("Stopping playback.\n");
+MainWin::Pause() {
+    printf("Pausing playback.");
 
     sp->Stop();
 }
 
+void
+MainWin::Stop() {
+    printf("Stopping playback.\n");
+
+    sp->Stop();
+    delete sp;
+}
+
 
 void
-MainWin::OnNext() {
+MainWin::Next() {
     printf("Next track.\n");
 
     if (shuffle)
@@ -226,8 +255,10 @@ MainWin::OnNext() {
     else
         position += 1;
 
-    if (sp)
+    if (sp) {
         sp->Stop();
+        sp = 0;
+    }
 
-    OnStart();
+    Play();
 }
